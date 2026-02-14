@@ -102,10 +102,10 @@ What you personally verified (not just CI), and how:
 
 ## Risks and Mitigations
 
-- Risk 1:
-- Mitigation 1:
-- Risk 2:
-- Mitigation 2:
+List only real risks for this PR. Add/remove entries as needed. If none, write `None`.
+
+- Risk:
+  - Mitigation:
 
 ## Reviewer Checklist
 

@@ -84,3 +84,9 @@ USER.md
 !.agent/workflows/
 local/
 package-lock.json
+
+# Config files that may contain secrets (tokens, API keys, passwords)
+openclaw.json
+clawdbot.json
+moltbot.json
+moldbot.json

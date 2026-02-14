@@ -198,8 +198,13 @@ export function createHooksRequestHandler(
   const { getHooksConfig, bindHost, port, logHooks, dispatchAgentHook, dispatchWakeHook } = opts;
   const hookAuthFailures = new Map<string, HookAuthFailure>();
 
-  const resolveHookClientKey = (req: IncomingMessage): string => {
-    return req.socket?.remoteAddress?.trim() || "unknown";
+  const resolveHookClientKey = (req: IncomingMessage, trustedProxies: string[] = []): string => {
+    return resolveGatewayClientIp({
+      remoteAddr: req.socket?.remoteAddress,
+      forwardedFor: req.headers["x-forwarded-for"] as string | undefined,
+      realIp: req.headers["x-real-ip"] as string | undefined,
+      trustedProxies,
+    });
   };
 
   const recordHookAuthFailure = (
@@ -271,7 +276,8 @@ export function createHooksRequestHandler(
     }
 
     const token = extractHookToken(req);
-    const clientKey = resolveHookClientKey(req);
+    const configSnapshot = loadConfig();
+    const clientKey = resolveHookClientKey(req, configSnapshot.gateway?.trustedProxies ?? []);
     if (!safeEqualSecret(token, hooksConfig.token)) {
       const throttle = recordHookAuthFailure(clientKey, Date.now());
       if (throttle.throttled) {
@@ -473,11 +479,19 @@ export function createGatewayHttpServer(opts: {
         void handleRequest(req, res);
       });
 
+  // Protect against slowloris-style attacks by capping how long the server
+  // waits for request headers and the overall request lifecycle.
+  httpServer.headersTimeout = 30_000;
+  httpServer.requestTimeout = 120_000;
+
   async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     // Don't interfere with WebSocket upgrades; ws handles the 'upgrade' event.
     if (String(req.headers.upgrade ?? "").toLowerCase() === "websocket") {
       return;
     }
+
+    // Apply security headers globally to all HTTP responses.
+    res.setHeader("X-Content-Type-Options", "nosniff");
 
     try {
       const configSnapshot = loadConfig();

@@ -166,15 +166,22 @@ interface ControlUiInjectionOpts {
   assistantAvatar?: string;
 }
 
+function escapeJsonForScript(value: unknown): string {
+  // JSON.stringify does not escape </script> sequences; a literal </
+  // inside a <script> block terminates it. Replace </ with <\/ to prevent
+  // breaking out of the script tag (safe in JSON string context).
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
 function injectControlUiConfig(html: string, opts: ControlUiInjectionOpts): string {
   const { basePath, assistantName, assistantAvatar } = opts;
   const script =
     `<script>` +
-    `window.__OPENCLAW_CONTROL_UI_BASE_PATH__=${JSON.stringify(basePath)};` +
-    `window.__OPENCLAW_ASSISTANT_NAME__=${JSON.stringify(
+    `window.__OPENCLAW_CONTROL_UI_BASE_PATH__=${escapeJsonForScript(basePath)};` +
+    `window.__OPENCLAW_ASSISTANT_NAME__=${escapeJsonForScript(
       assistantName ?? DEFAULT_ASSISTANT_IDENTITY.name,
     )};` +
-    `window.__OPENCLAW_ASSISTANT_AVATAR__=${JSON.stringify(
+    `window.__OPENCLAW_ASSISTANT_AVATAR__=${escapeJsonForScript(
       assistantAvatar ?? DEFAULT_ASSISTANT_IDENTITY.avatar,
     )};` +
     `</script>`;

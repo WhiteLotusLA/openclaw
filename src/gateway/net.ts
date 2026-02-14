@@ -201,11 +201,16 @@ export async function resolveGatewayBindHost(
   const mode = bind ?? "loopback";
 
   if (mode === "loopback") {
-    // 127.0.0.1 rarely fails, but handle gracefully
     if (await canBindToHost("127.0.0.1")) {
       return "127.0.0.1";
     }
-    return "0.0.0.0"; // extreme fallback
+    if (await canBindToHost("::1")) {
+      return "::1";
+    }
+    throw new Error(
+      "Cannot bind to loopback address (127.0.0.1 / ::1). " +
+        "Set gateway.bind to 'lan' if you intend to expose the gateway on all interfaces.",
+    );
   }
 
   if (mode === "tailnet") {
@@ -216,7 +221,10 @@ export async function resolveGatewayBindHost(
     if (await canBindToHost("127.0.0.1")) {
       return "127.0.0.1";
     }
-    return "0.0.0.0";
+    throw new Error(
+      "Cannot bind to Tailscale IP or loopback. " +
+        "Ensure Tailscale is running, or set gateway.bind to 'lan' to bind all interfaces.",
+    );
   }
 
   if (mode === "lan") {
